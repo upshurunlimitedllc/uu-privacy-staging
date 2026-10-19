@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>TEST HARNESS — seed EXPIRED consent (staging only)</title></head>
+<body><p>Seeding an EXPIRED accepted record (timestamp 2001-09-09, far beyond the 180-day validity), then redirecting to the staged homepage. Expected: the gate treats the record as expired — the banner appears and no tracker loads.</p>
+<script>
+try { localStorage.setItem('uu.analyticsConsent.v1', JSON.stringify({choice:'accepted', ts:1000000000000, v:1})); } catch(e) {}
+location.replace('../');
+</script></body></html>

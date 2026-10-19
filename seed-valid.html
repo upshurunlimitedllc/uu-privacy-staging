@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>TEST HARNESS — seed VALID consent (staging only)</title></head>
+<body><p>Seeding a VALID accepted record (timestamp = now), then redirecting to the staged homepage. Expected (control test): no banner, and the tracker loads automatically — proving the seeding method itself works.</p>
+<script>
+try { localStorage.setItem('uu.analyticsConsent.v1', JSON.stringify({choice:'accepted', ts:Date.now(), v:1})); } catch(e) {}
+location.replace('../');
+</script></body></html>
