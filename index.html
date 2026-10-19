@@ -1,6 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* Upshur Unlimited — Metricool consent gate v2 (2026). Self-contained; makes no network requests.
+   The Metricool tracker loads ONLY after the visitor accepts — for every visitor, everywhere.
+   No region detection is used: device signals cannot establish a visitor's physical location. */
+(function () {
+  "use strict";
+  var KEY = "uu.analyticsConsent.v1";             /* choice record (localStorage, this device only) */
+  var DISMISS = "uu.analyticsConsent.dismissed";  /* session-only "not now" flag (sessionStorage) */
+  var MAXAGE = 180 * 24 * 60 * 60 * 1000;         /* a choice is honoured for 6 months, then re-asked */
+
+  /* Metricool tracker — VERIFY VERBATIM against a live page before deploying (audit, 2026-10-18). */
+  var TRACKER_SRC = "https://tracker.metricool.com/resources/be.js";
+  var TRACKER_HASH = "b61defc5a86e743858a5e462b640338c";
+
+  var loaded = false;
+  function loadMetricool() {
+    if (loaded) return; loaded = true;
+    var done = false;
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    s.async = true;
+    s.src = TRACKER_SRC;
+    s.onload = s.onreadystatechange = function () {
+      if (done) return;
+      if (s.readyState && s.readyState !== "loaded" && s.readyState !== "complete") return;
+      done = true;
+      if (window.beTracker && window.beTracker.t) window.beTracker.t({ hash: TRACKER_HASH });
+    };
+    document.getElementsByTagName("head")[0].appendChild(s);
+  }
+
+  var memoryChoice = null; /* fallback if localStorage is unavailable */
+  function readChoice() {
+    if (memoryChoice) return memoryChoice;
+    try {
+      var raw = window.localStorage.getItem(KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || (o.choice !== "accepted" && o.choice !== "declined") || !o.ts) return null;
+      if (Date.now() - o.ts > MAXAGE) return null; /* expired: ask again; tracker stays off meanwhile */
+      return o.choice;
+    } catch (e) { return null; }
+  }
+  function writeChoice(c) {
+    memoryChoice = c;
+    try { window.localStorage.setItem(KEY, JSON.stringify({ choice: c, ts: Date.now(), v: 1 })); } catch (e) {}
+  }
+  function clearChoice() {
+    memoryChoice = null;
+    try { window.localStorage.removeItem(KEY); } catch (e) {}
+  }
+
+  function showBar() {
+    try { if (window.sessionStorage.getItem(DISMISS)) return; } catch (e) {}
+    if (document.getElementById("uu-consent")) return;
+    var bar = document.createElement("div");
+    bar.id = "uu-consent";
+    bar.setAttribute("role", "region");
+    bar.setAttribute("aria-label", "Visit counting permission");
+    bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#1f2937;color:#f9fafb;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;font:14px/1.45 system-ui,sans-serif;";
+    var msg = document.createElement("span");
+    msg.style.cssText = "max-width:640px;";
+    msg.innerHTML = "We use Metricool to count visits and see which books readers are finding. The counting only starts if you accept &mdash; everything on this site works the same either way. <a href=\"/privacy/\" style=\"color:#93c5fd;\">Privacy Policy</a>";
+    var btnCss = "font:inherit;padding:8px 18px;border-radius:6px;border:1px solid #f9fafb;background:transparent;color:#f9fafb;cursor:pointer;";
+    var accept = document.createElement("button");
+    accept.type = "button"; accept.textContent = "Accept"; accept.style.cssText = btnCss;
+    var decline = document.createElement("button");
+    decline.type = "button"; decline.textContent = "Decline"; decline.style.cssText = btnCss;
+    var close = document.createElement("button");
+    close.type = "button"; close.textContent = "×";
+    close.setAttribute("aria-label", "Not now");
+    close.style.cssText = "font:inherit;background:transparent;border:0;color:#f9fafb;cursor:pointer;font-size:18px;padding:4px 8px;";
+    function hide() { if (bar.parentNode) bar.parentNode.removeChild(bar); }
+    accept.addEventListener("click", function () { writeChoice("accepted"); hide(); loadMetricool(); });
+    decline.addEventListener("click", function () { writeChoice("declined"); hide(); });
+    close.addEventListener("click", function () {
+      try { window.sessionStorage.setItem(DISMISS, "1"); } catch (e) {}
+      hide();
+    });
+    bar.appendChild(msg); bar.appendChild(accept); bar.appendChild(decline); bar.appendChild(close);
+    document.body.appendChild(bar);
+  }
+  function bindChoicesLink() {
+    var link = document.getElementById("uu-privacy-choices");
+    if (!link || link.getAttribute("data-bound")) return;
+    link.setAttribute("data-bound", "1");
+    link.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      clearChoice();
+      window.location.reload(); /* banner returns; no tracker loads before a fresh Accept */
+    });
+  }
+  function onReady(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else fn();
+  }
+
+  var choice = readChoice();
+  if (choice === "accepted") { loadMetricool(); }
+  else if (choice !== "declined") { onReady(showBar); }   /* no valid record: ask first, load nothing */
+  /* choice === "declined": never load, never ask (until expiry or withdrawal) */
+  onReady(bindChoicesLink);
+})();
+</script>
+
 <meta name="google-site-verification" content="i8Bj8S0oypmgzNzZz" />
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -118,110 +223,7 @@ if(!e.target.closest('.searchbox')){box.style.display='none';}});</script>
     ml('account', '2685054');
 </script>
 <!-- End MailerLite Universal -->
-<script>
-/* Upshur Unlimited — Metricool consent gate v2 (2026). Self-contained; makes no network requests.
-   The Metricool tracker loads ONLY after the visitor accepts — for every visitor, everywhere.
-   No region detection is used: device signals cannot establish a visitor's physical location. */
-(function () {
-  "use strict";
-  var KEY = "uu.analyticsConsent.v1";             /* choice record (localStorage, this device only) */
-  var DISMISS = "uu.analyticsConsent.dismissed";  /* session-only "not now" flag (sessionStorage) */
-  var MAXAGE = 180 * 24 * 60 * 60 * 1000;         /* a choice is honoured for 6 months, then re-asked */
-
-  /* Metricool tracker — VERIFY VERBATIM against a live page before deploying (audit, 2026-10-18). */
-  var TRACKER_SRC = "https://tracker.metricool.com/resources/be.js";
-  var TRACKER_HASH = "b61defc5a86e743858a5e462b640338c";
-
-  var loaded = false;
-  function loadMetricool() {
-    if (loaded) return; loaded = true;
-    var done = false;
-    var s = document.createElement("script");
-    s.type = "text/javascript";
-    s.async = true;
-    s.src = TRACKER_SRC;
-    s.onload = s.onreadystatechange = function () {
-      if (done) return;
-      if (s.readyState && s.readyState !== "loaded" && s.readyState !== "complete") return;
-      done = true;
-      if (window.beTracker && window.beTracker.t) window.beTracker.t({ hash: TRACKER_HASH });
-    };
-    document.getElementsByTagName("head")[0].appendChild(s);
-  }
-
-  var memoryChoice = null; /* fallback if localStorage is unavailable */
-  function readChoice() {
-    if (memoryChoice) return memoryChoice;
-    try {
-      var raw = window.localStorage.getItem(KEY);
-      if (!raw) return null;
-      var o = JSON.parse(raw);
-      if (!o || (o.choice !== "accepted" && o.choice !== "declined") || !o.ts) return null;
-      if (Date.now() - o.ts > MAXAGE) return null; /* expired: ask again; tracker stays off meanwhile */
-      return o.choice;
-    } catch (e) { return null; }
-  }
-  function writeChoice(c) {
-    memoryChoice = c;
-    try { window.localStorage.setItem(KEY, JSON.stringify({ choice: c, ts: Date.now(), v: 1 })); } catch (e) {}
-  }
-  function clearChoice() {
-    memoryChoice = null;
-    try { window.localStorage.removeItem(KEY); } catch (e) {}
-  }
-
-  function showBar() {
-    try { if (window.sessionStorage.getItem(DISMISS)) return; } catch (e) {}
-    if (document.getElementById("uu-consent")) return;
-    var bar = document.createElement("div");
-    bar.id = "uu-consent";
-    bar.setAttribute("role", "region");
-    bar.setAttribute("aria-label", "Visit counting permission");
-    bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#1f2937;color:#f9fafb;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;font:14px/1.45 system-ui,sans-serif;";
-    var msg = document.createElement("span");
-    msg.style.cssText = "max-width:640px;";
-    msg.innerHTML = "We use Metricool to count visits and see which books readers are finding. The counting only starts if you accept &mdash; everything on this site works the same either way. <a href=\"/privacy/\" style=\"color:#93c5fd;\">Privacy Policy</a>";
-    var btnCss = "font:inherit;padding:8px 18px;border-radius:6px;border:1px solid #f9fafb;background:transparent;color:#f9fafb;cursor:pointer;";
-    var accept = document.createElement("button");
-    accept.type = "button"; accept.textContent = "Accept"; accept.style.cssText = btnCss;
-    var decline = document.createElement("button");
-    decline.type = "button"; decline.textContent = "Decline"; decline.style.cssText = btnCss;
-    var close = document.createElement("button");
-    close.type = "button"; close.textContent = "×";
-    close.setAttribute("aria-label", "Not now");
-    close.style.cssText = "font:inherit;background:transparent;border:0;color:#f9fafb;cursor:pointer;font-size:18px;padding:4px 8px;";
-    function hide() { if (bar.parentNode) bar.parentNode.removeChild(bar); }
-    accept.addEventListener("click", function () { writeChoice("accepted"); hide(); loadMetricool(); });
-    decline.addEventListener("click", function () { writeChoice("declined"); hide(); });
-    close.addEventListener("click", function () {
-      try { window.sessionStorage.setItem(DISMISS, "1"); } catch (e) {}
-      hide();
-    });
-    bar.appendChild(msg); bar.appendChild(accept); bar.appendChild(decline); bar.appendChild(close);
-    document.body.appendChild(bar);
-  }
-  function bindChoicesLink() {
-    var link = document.getElementById("uu-privacy-choices");
-    if (!link || link.getAttribute("data-bound")) return;
-    link.setAttribute("data-bound", "1");
-    link.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      clearChoice();
-      window.location.reload(); /* banner returns; no tracker loads before a fresh Accept */
-    });
-  }
-  function onReady(fn) {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
-    else fn();
-  }
-
-  var choice = readChoice();
-  if (choice === "accepted") { loadMetricool(); }
-  else if (choice !== "declined") { onReady(showBar); }   /* no valid record: ask first, load nothing */
-  /* choice === "declined": never load, never ask (until expiry or withdrawal) */
-  onReady(bindChoicesLink);
-})();
-</script>
+<script>function loadScript(a){var b=document.getElementsByTagName("head")[0],c=document.createElement("script");c.type="text/javascript",c.src="https://tracker.metricool.com/resources/be.js",c.onreadystatechange=a,c.onload=a,b.appendChild(c)}loadScript(function(){beTracker.t({hash:"b61defc5a86e743858a5e462b640338c"})});</script>
 </head>
 <body>
 <header class="site"><div class="wrap topbar">
@@ -289,6 +291,60 @@ if(!e.target.closest('.searchbox')){box.style.display='none';}});</script>
 <script>
 (function(){
   var now = new Date();
-  var start = new Date(now.get
-<footer class="site"><div class="wrap"><div class="flink"><a href="https://kimaniupshur.com/privacy">Privacy Policy</a>
-<a href="/privacy/" id="uu-privacy-choices">Privacy choices</a></div></div></footer>
+  var start = new Date(now.getFullYear(), 0, 0);
+  var doy = Math.floor((now - start) / 86400000);
+  fetch('devotionals.json')
+    .then(function(r){ return r.json(); })
+    .then(function(all){
+      var d = all[(doy - 1) % all.length];
+      document.getElementById('d-date').textContent = now.toLocaleDateString(undefined, {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+      document.getElementById('d-verse').textContent = '\u201C' + d.verse + '\u201D';
+      document.getElementById('d-ref').textContent = d.reference + ' (KJV)';
+      document.getElementById('d-reflection').textContent = d.reflection;
+      document.getElementById('d-prayer').textContent = d.prayer;
+    })
+    .catch(function(){ document.getElementById('daily-devotional').style.display = 'none'; });
+})();
+</script>
+<section class="block"><div class="wrap" style="text-align:center">
+<div class="ml-embedded" data-form="91hYnJ"></div>
+<h3 style="font-size:1.05rem;color:#e8c84a;margin:14px 0 4px">Get the Daily Devotional</h3>
+<p style="font-size:.8rem;color:#8a7a4a;margin-top:0">A fresh Bible verse, reflection, and prayer in your inbox every morning.</p>
+</div></section>
+<section class="block" style="text-align:center"><h2 class="sec">Support the Work</h2>
+<p class="sec-sub">If you have benefited from these books, free faith apps, or informational videos, you can help support the continued creation of educational and faith-centered resources. Your support is voluntary and appreciated.</p>
+<div class="btnrow">
+<a class="btn" href="https://cash.app/$upshurunlimited" target="_blank" rel="noopener">Support via Cash App</a>
+</div>
+<p class="sec-sub" style="font-size:.78rem;margin-top:12px">Contributions go directly to Upshur Unlimited, LLC to support ongoing work.</p></section>
+<section class="block"><div class="wrap">
+<div class="catgrid">
+<div class="cat">
+<h3>Car Buying Made Simple</h3>
+<p>Buying a car doesn't have to be complicated.</p>
+<p>Practical guidance for researching, comparing, financing, negotiating, and owning a vehicle.</p>
+<p style="margin-top:16px"><a class="btn ghost" href="/car-buying/">Explore Car Buying Made Simple</a></p>
+</div>
+<div class="cat">
+<h3>Automotive Essentials</h3>
+<p>Useful products for your vehicle, available through Amazon.</p>
+<p>Emergency gear, maintenance basics, and everyday conveniences — in one place.</p>
+<p style="margin-top:16px"><a class="btn ghost" href="/car-buying/#automotive-essentials">Shop Automotive Essentials</a></p>
+</div>
+</div>
+</div></section>
+<footer class="site"><div class="wrap">
+<div class="flink"><a href="https://kimaniupshur.com/privacy">Privacy Policy</a>
+<a href="/privacy/" id="uu-privacy-choices">Privacy choices</a>
+<a href="/books/">Books</a>
+
+<a href="/apps.html">Free Faith Apps</a>
+<a href="https://www.amazon.com/s?k=Kimani+Upshur&tag=upshurunlimit-20" rel="nofollow sponsored noopener">Amazon Author Page</a>
+<a href="https://upshurunlimitedllc.gumroad.com" rel="nofollow noopener">Gumroad Store</a>
+<a href="/contact.html">Contact</a>
+</div>
+<div>&copy; 2026 Upshur Unlimited, LLC. All rights reserved. Books by Kimani Upshur, M.Ed.</div>
+<p class="fine">FTC Disclosure: As an Amazon Associate, Upshur Unlimited, LLC earns from qualifying purchases made through Amazon links on this site — at no extra cost to you. Every book is written from a Christian worldview: Scripture first, Christ at the center.</p>
+</div></footer>
+</body>
+</html>
